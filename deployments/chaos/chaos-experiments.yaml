@@ -1,0 +1,53 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: service-a-random-kill
+  namespace: canary-playground
+spec:
+  action: pod-kill
+  mode: one
+  duration: "30s"
+  scheduler:
+    cron: "*/5 * * * *"
+  selector:
+    labelSelectors:
+      app: service-a
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: service-a-v2-latency
+  namespace: canary-playground
+spec:
+  action: delay
+  mode: all
+  selector:
+    labelSelectors:
+      app: service-a
+      version: v2
+  delay:
+    latency: "250ms"
+    correlation: "50"
+    jitter: "50ms"
+  duration: "1m"
+  scheduler:
+    cron: "*/10 * * * *"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: service-a-v2-packet-loss
+  namespace: canary-playground
+spec:
+  action: loss
+  mode: all
+  selector:
+    labelSelectors:
+      app: service-a
+      version: v2
+  loss:
+    loss: "20"
+    correlation: "30"
+  duration: "1m"
+  scheduler:
+    cron: "15 */1 * * *"

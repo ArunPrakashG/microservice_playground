@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust
+  namespace: canary-playground
+  labels:
+    app: locust
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+  template:
+    metadata:
+      labels:
+        app: locust
+    spec:
+      containers:
+        - name: locust
+          image: canary-playground/locust:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TARGET_HOST
+              value: "http://envoy-gateway.canary-playground.svc.cluster.local"
+            - name: CANARY_ENDPOINT
+              value: "/"
+            - name: FORTUNE_ENDPOINT
+              value: "/fortunes"
+            - name: BETA_ENDPOINT
+              value: "/beta-insights"
+            - name: AGGREGATE_ENDPOINT
+              value: "/aggregate"
+          ports:
+            - containerPort: 8089
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

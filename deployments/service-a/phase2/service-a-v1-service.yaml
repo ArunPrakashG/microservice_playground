@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a-v1
+  namespace: canary-playground
+  labels:
+    app: service-a
+    version: v1
+spec:
+  selector:
+    app: service-a
+    version: v1
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000

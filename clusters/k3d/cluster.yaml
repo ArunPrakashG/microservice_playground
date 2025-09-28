@@ -1,0 +1,38 @@
+# k3d cluster definition for the Microservice Canary Playground
+# Exposes the load balancer on localhost ports for Envoy (8080), Grafana (3000),
+# and Prometheus (9090). Spins up a local registry so images can be pushed once
+# and reused across nodes.
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: canary-playground
+servers: 1
+agents: 2
+kubeAPI:
+  host: 0.0.0.0
+  hostPort: 6445
+image: rancher/k3s:v1.29.4-k3s1
+ports:
+  - port: 8080:80 # Envoy/Gateway HTTP entrypoint
+    nodeFilters:
+      - loadbalancer
+  - port: 3000:30000 # Grafana dashboard
+    nodeFilters:
+      - loadbalancer
+  - port: 9090:30001 # Prometheus UI
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: canary-registry
+    host: 0.0.0.0
+    hostPort: 5001
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik # We'll run our own Envoy gateway
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

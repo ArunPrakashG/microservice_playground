@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  service-a-v1:
+    build:
+      context: ../services/service-a/v1
+    container_name: service-a-v1
+    environment:
+      SERVICE_VERSION: v1
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+
+  service-a-v2:
+    build:
+      context: ../services/service-a/v2
+    container_name: service-a-v2
+    environment:
+      SERVICE_VERSION: v2
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
+
+  service-b:
+    build:
+      context: ../services/service-b/app
+    container_name: service-b
+    environment:
+      SERVICE_A_URL: http://envoy
+    ports:
+      - "8003:8000"
+    depends_on:
+      - service-a-v1
+      - service-a-v2
+    restart: unless-stopped
+
+  envoy:
+    image: envoyproxy/envoy:v1.29.3
+    container_name: envoy
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "8080:80"
+      - "9901:9901"
+    depends_on:
+      - service-a-v1
+      - service-a-v2
+      - service-b
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - service-a-v1
+      - service-a-v2
+      - service-b
+      - envoy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  locust:
+    build:
+      context: ../loadtest
+    container_name: locust
+    environment:
+      TARGET_HOST: http://envoy
+      CANARY_ENDPOINT: /
+      FORTUNE_ENDPOINT: /fortunes
+      BETA_ENDPOINT: /beta-insights
+      AGGREGATE_ENDPOINT: /aggregate
+    command: ["locust", "--web-host", "0.0.0.0"]
+    ports:
+      - "8089:8089"
+    depends_on:
+      - envoy
+    restart: unless-stopped

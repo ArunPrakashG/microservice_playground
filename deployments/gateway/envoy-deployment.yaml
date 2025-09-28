@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-gateway
+  namespace: canary-playground
+  labels:
+    app: envoy-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: envoy-gateway
+  template:
+    metadata:
+      labels:
+        app: envoy-gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9901"
+        prometheus.io/path: "/stats/prometheus"
+    spec:
+      containers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.29.3
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-c"
+            - "/etc/envoy/envoy.yaml"
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 9901
+              name: admin
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-config

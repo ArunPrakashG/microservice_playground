@@ -1,0 +1,7 @@
+# Shared namespace for all playground components
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: canary-playground
+  labels:
+    app.kubernetes.io/name: canary-playground
