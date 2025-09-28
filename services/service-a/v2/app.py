@@ -5,12 +5,12 @@ import time
 
 app = FastAPI(title="service-a", version="v2")
 
-instrumentator = Instrumentator()
+instrumentator = Instrumentator().instrument(app)
 
 
 @app.on_event("startup")
 async def startup() -> None:
-    instrumentator.instrument(app).expose(app, include_in_schema=False)
+    instrumentator.expose(app, include_in_schema=False)
 
 
 @app.get("/", summary="Respond with the v2 experience")

@@ -5,11 +5,13 @@ import time
 
 app = FastAPI(title="service-a", version="v1")
 
+instrumentator = Instrumentator().instrument(app)
+
 
 @app.on_event("startup")
 async def startup() -> None:
-    """Register Prometheus instrumentation as soon as the app boots."""
-    Instrumentator().instrument(app).expose(app, include_in_schema=False)
+    """Expose Prometheus metrics once the server is ready."""
+    instrumentator.expose(app, include_in_schema=False)
 
 
 @app.get("/", summary="Greet the caller")

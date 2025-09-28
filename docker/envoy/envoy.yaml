@@ -23,7 +23,13 @@ static_resources:
                         - "*"
                       routes:
                         - match:
-                            prefix: "/service-b"
+                            path: "/service-b"
+                          route:
+                            cluster: service_b
+                            prefix_rewrite: "/"
+                            timeout: 2s
+                        - match:
+                            prefix: "/service-b/"
                           route:
                             cluster: service_b
                             prefix_rewrite: "/"
@@ -40,6 +46,8 @@ static_resources:
                             timeout: 2s
                 http_filters:
                   - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
     - name: service_a_v1
       connect_timeout: 0.25s
@@ -82,7 +90,7 @@ static_resources:
                       port_value: 8000
 admin:
   access_log_path: /tmp/admin_access.log
-    
+
   address:
     socket_address:
       address: 0.0.0.0

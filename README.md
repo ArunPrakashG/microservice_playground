@@ -16,6 +16,10 @@ On Windows, run the PowerShell commands in an elevated PowerShell window. For ma
 
 ## Quick start
 
+Choose the runtime that fits your demo.
+
+### Option A — Kubernetes (k3d)
+
 Clone the repo and bootstrap everything:
 
 ```powershell
@@ -36,6 +40,24 @@ The bootstrap script:
 2. Builds Docker images for all services + Locust and imports them into the cluster.
 3. Applies Kubernetes manifests in phased order (see below).
 4. Synchronizes Grafana dashboards from `observability/grafana/dashboards`.
+
+### Option B — Docker Compose (no Kubernetes)
+
+Bring everything up with containers only:
+
+```powershell
+# Windows PowerShell
+cd .\microservice_playground\docker
+docker compose up --build
+```
+
+```bash
+# macOS/Linux/WSL
+cd microservice_playground/docker
+docker compose up --build
+```
+
+Docker Compose builds the same service images and wires Envoy, Prometheus, Grafana, Locust, and the FastAPI apps on a single bridge network. Use `docker compose down` when you're done, or `docker compose down -v` to remove volumes.
 
 ### Phased rollouts
 
@@ -64,25 +86,27 @@ Phase summary:
 
 ## What gets deployed
 
-| Component | Notes |
-|-----------|-------|
-| `service-a:v1` | FastAPI baseline version with predictable latency |
-| `service-a:v2` | FastAPI canary with variable latency + synthetic failures |
-| `service-b` | Aggregator calling `service-a` for fortunes |
-| Envoy Gateway | Routes `/` traffic 90/10 between v1/v2, `/service-b` to service-b |
-| Prometheus | Scrapes all services, Envoy admin, Locust |
-| Grafana | Includes ready-to-use *Service-A Canary Overview* dashboard |
-| Locust | Web UI (NodePort `30089`) to drive configurable traffic |
+| Component      | Notes                                                                |
+| -------------- | -------------------------------------------------------------------- |
+| `service-a:v1` | FastAPI baseline version with predictable latency                    |
+| `service-a:v2` | FastAPI canary with variable latency + synthetic failures            |
+| `service-b`    | Aggregator calling `service-a` for fortunes                          |
+| Envoy Gateway  | Routes `/` traffic 90/10 between v1/v2, `/service-b` to service-b    |
+| Prometheus     | Scrapes all services, Envoy admin, Locust                            |
+| Grafana        | Includes ready-to-use _Service-A Canary Overview_ dashboard          |
+| Locust         | Web UI (NodePort `30089`) to drive configurable traffic              |
 | Chaos Mesh CRs | Pod kill + latency + packet loss experiments for service-a (Phase 3) |
 
 External ports are mapped via k3d load balancer:
 
-| Service | URL |
-|---------|-----|
-| Envoy gateway | <http://localhost:8080> |
-| Prometheus | <http://localhost:9090> |
-| Grafana | <http://localhost:3000> (user/pass: `admin`/`admin`) |
-| Locust UI | <http://localhost:30089> |
+| Service         | URL                                                                              |
+| --------------- | -------------------------------------------------------------------------------- |
+| Envoy gateway   | <http://localhost:8080> (k3d & Compose)                                          |
+| Prometheus      | <http://localhost:9090> (k3d & Compose)                                          |
+| Grafana         | <http://localhost:3000> (user/pass: `admin`/`admin`)                             |
+| Locust UI       | k3d: <http://localhost:30089> · Compose: <http://localhost:8089>                 |
+| Service-a v1/v2 | Compose only for direct calls: `http://localhost:8001` / `http://localhost:8002` |
+| Service-b       | Compose direct: `http://localhost:8003`                                          |
 
 ## Observability & dashboards
 
@@ -95,6 +119,8 @@ Dashboard highlights:
 - Error-rate percentage with synthetic 500s introduced by v2
 
 ## Driving load with Locust
+
+### Kubernetes path
 
 Launch the Locust web UI:
 
@@ -110,6 +136,14 @@ Open the NodePort (`localhost:30089`) and start a swarm. Default targets:
 - `/beta-insights` (tagged scenario) simulates gated beta traffic
 
 You can override endpoints via environment variables on the Locust deployment or by running Locust locally with `TARGET_HOST`, `CANARY_ENDPOINT`, etc.
+
+### Docker path
+
+When using Docker Compose, the Locust UI is already bound to <http://localhost:8089>. Start the swarm in the UI, or run a headless load locally:
+
+```bash
+docker compose run --rm locust -u 50 -r 5 -H http://envoy --headless -t 5m
+```
 
 ## Chaos experiments (Phase 3)
 
@@ -147,6 +181,11 @@ make cleanup
 ```powershell
 # Windows PowerShell
 k3d cluster delete canary-playground
+```
+
+```bash
+# Docker Compose
+docker compose down
 ```
 
 ## Optional enhancements
